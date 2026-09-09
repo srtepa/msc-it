@@ -1,0 +1,119 @@
+# ==========================================
+# Язык: Python (Кэш, виртуальные окружения)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Виртуальные окружения (Virtual Environments)
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Инструменты сборки и дистрибуции
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Тесты и покрытие (Pytest, Coverage)
+htmlcov/
+.toml
+.cache
+.pytest_cache/
+.coverage
+.coverage.*
+.hypothesis/
+.noftests/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# ==========================================
+# Язык: TypeScript / Node.js (Зависимости и сборка)
+# ==========================================
+# Зависимости (Dependencies)
+node_modules/
+jspm_packages/
+
+# Папки сборки (Build outputs)
+dist/
+out/
+build/
+.next/
+.nuxt/
+
+# Логи Node
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Кэш инструментов (Транспиляторы, линтеры)
+.eslintcache
+.stylelintcache
+.tsbuildinfo
+.node_repl_history
+.npm
+.yarn-cache/
+.parcel-cache/
+
+# ==========================================
+# Секреты и конфигурация (Общие)
+# ==========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.pem
+*.key
+
+# ==========================================
+# IDE / Редакторы (VS Code, JetBrains)
+# ==========================================
+# Visual Studio Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# JetBrains (PyCharm, WebStorm)
+.idea/
+
+# ==========================================
+# Операционные системы (OS)
+# ==========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.lnk
