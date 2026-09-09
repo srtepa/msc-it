@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""Graphical TypeScript Halstead metrics analyzer.
-
-The application intentionally uses only Python's standard library so it can be
-run on a clean educational workstation with: python3 halstead_analyzer.py
-"""
-
 from __future__ import annotations
 
 import math
@@ -98,7 +91,6 @@ class LexToken:
 
 
 def _find_interpolation_end(source: str, start: int) -> int:
-    """Find the closing brace of a ${...} expression."""
     depth = 1
     pos = start
     while pos < len(source):
@@ -129,7 +121,6 @@ def _find_interpolation_end(source: str, start: int) -> int:
 
 
 def _consume_template(source: str, start: int) -> tuple[int, list[tuple[str, str]]]:
-    """Return the end position and text/code parts of a template literal."""
     parts: list[tuple[str, str]] = []
     pos = start + 1
     text_start = pos
@@ -156,7 +147,6 @@ def _consume_template(source: str, start: int) -> tuple[int, list[tuple[str, str
 
 
 def _lex_typescript(source: str) -> tuple[list[LexToken], list[str]]:
-    """Create tokens while keeping template interpolations as real code."""
     tokens: list[LexToken] = []
     unknown: list[str] = []
     pos = 0
@@ -190,7 +180,6 @@ def _lex_typescript(source: str) -> tuple[list[LexToken], list[str]]:
 
 
 def _matching(tokens: list[LexToken], start: int, opening: str, closing: str) -> int | None:
-    """Return the matching delimiter index, accounting for nesting."""
     depth = 0
     for index in range(start, len(tokens)):
         value = tokens[index].value
@@ -204,7 +193,6 @@ def _matching(tokens: list[LexToken], start: int, opening: str, closing: str) ->
 
 
 def _statement_end(tokens: list[LexToken], start: int) -> int:
-    """Find a declaration's final semicolon without stopping inside a type body."""
     depth = 0
     for index in range(start, len(tokens)):
         value = tokens[index].value
@@ -218,7 +206,6 @@ def _statement_end(tokens: list[LexToken], start: int) -> int:
 
 
 def _remove_declarations(tokens: list[LexToken]) -> list[LexToken]:
-    """Remove TypeScript declaration sections before Halstead classification."""
     result: list[LexToken] = []
     index = 0
     while index < len(tokens):
@@ -245,7 +232,6 @@ def _remove_declarations(tokens: list[LexToken]) -> list[LexToken]:
 
 
 def _is_function_parameter_list(tokens: list[LexToken], open_index: int) -> bool:
-    """Recognize function parameters without confusing an object literal call."""
     before = [token.value for token in tokens[max(0, open_index - 3):open_index]]
     if "function" in before:
         return True
@@ -254,7 +240,6 @@ def _is_function_parameter_list(tokens: list[LexToken], open_index: int) -> bool
 
 
 def _remove_type_annotations(tokens: list[LexToken]) -> list[LexToken]:
-    """Drop parameter, variable and return type annotations from TypeScript."""
     result: list[LexToken] = []
     paren_stack: list[tuple[int, bool]] = []
     declaration_since_boundary = False
@@ -302,7 +287,6 @@ CONTROL_WORDS = {"if", "for", "while", "switch", "catch", "with"}
 
 
 def _if_else_indices(tokens: list[LexToken]) -> tuple[set[int], set[int]]:
-    """Find if/else pairs so the two words become one operator."""
     if_indices: set[int] = set()
     else_indices: set[int] = set()
     for index, token in enumerate(tokens):
@@ -329,7 +313,6 @@ def _is_code_block(tokens: list[LexToken], index: int) -> bool:
 
 
 def tokenize_typescript(source: str) -> Analysis:
-    """Analyze TypeScript using the declaration and compound-operator rules."""
     tokens, unknown = _lex_typescript(source)
     tokens = _remove_declarations(tokens)
     tokens = _remove_type_annotations(tokens)
