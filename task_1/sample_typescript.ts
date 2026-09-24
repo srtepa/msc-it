@@ -1,173 +1,100 @@
-// Символ внутреннего аудита отслеживания груза
-export const TRACKING_TOKEN = Symbol("cargo_tracking");
+const FRAGILE = 1 << 0;
+const HAZARDOUS = 1 << 1;
+const EXPRESS = 1 << 2;
 
-// Битовые флаги характеристик отправления
-export const FLAG_FRAGILE   = 1 << 0; // 1 (001) — хрупкий груз
-export const FLAG_HAZARDOUS = 1 << 1; // 2 (010) — опасный груз
-export const FLAG_EXPRESS   = 1 << 2; // 4 (100) — экспресс-доставка
+type Zone = "local" | "regional" | "international";
 
-export type DeliveryZone = "local" | "regional" | "international" | "customs";
-
-export interface PackageItem {
-  weightKg: number;
-  volumeM3: number;
-}
-
-export interface CargoShipment {
-  [TRACKING_TOKEN]?: string;
-  shipmentId: string;
-  zone: DeliveryZone;
-  items: PackageItem[];
+interface Shipment {
+  id: string;
+  zone: Zone;
+  weight: number;
   flags: number;
-  customsCode?: string | null;
+  code?: string | null;
 }
 
-export interface LogisticsReport {
-  totalCost: number;
-  shipmentsCount: number;
-  averageWeight: number;
-  manifest: string;
-}
+function tariff(zone: Zone, distance: number): number {
+  let rate = 50;
 
-// 1. Пользовательская функция: расчет базового тарифа (switch, if-else, арифметика, тернарный)
-export function calculateBaseTariff(
-  zone: DeliveryZone,
-  distanceKm: number,
-  declaredValue: number
-): number {
-  let tariffRate = 50.0;
-
-  // Ветвление switch / case / default
   switch (zone) {
-    case "local":
-      tariffRate += 20.0;
-      break;
-    case "regional":
-      tariffRate += 60.0;
-      break;
-    case "international":
-      tariffRate += 150.0;
-      break;
-    default:
-      tariffRate += 10.0;
-      break;
+    case "local": rate += 20; break;
+    case "regional": rate += 60; break;
+    case "international": rate += 150; break;
+    default: rate += 10;
   }
 
-  const distanceSurcharge = distanceKm > 0 ? (distanceKm * 0.15) : 5.0;
+  const extra = distance > 0 ? distance * 0.15 : 5;
 
-  // Ветвление if - else if - else + логические операторы && и ||
-  if (declaredValue >= 5000 && distanceKm > 300) {
-    tariffRate += 80.0;
-  } else if (declaredValue > 1000 || distanceKm >= 1000) {
-    tariffRate += 30.0;
-  } else {
-    tariffRate -= 10.0;
-  }
+  if (distance > 1000 && rate > 100)
+    rate += 30;
+  else if (distance > 300 || rate >= 150)
+    rate += 10;
+  else
+    rate -= 5;
 
-  const finalTariff = tariffRate + distanceSurcharge;
-
-  // Тернарный оператор ? :
-  return finalTariff < 40 ? 40 : finalTariff;
+  return rate + extra;
 }
 
-// 2. Пользовательская функция: пакетная обработка партий грузов (3 цикла, побитовые операции, Math)
-export function processShipmentsBatch(
-  shipments: CargoShipment[],
-  customsFeeRate: number = 0.08
-): LogisticsReport {
-  let totalCost = 0;
-  let totalWeight = 0;
-  let shipmentsCount = 0;
-  const entries: string[] = [];
+function process(data: Shipment[]): string {
+  let total = 0;
+  let index = 0;
+  const result: string[] = [];
 
-  // Цикл 1: for..of
-  for (const shipment of shipments) {
-    let shipmentWeight = 0;
-    let validItemsCount = 0;
+  for (const shipment of data) {
+    if (shipment.weight <= 0)
+      continue;
 
-    // Цикл 2: классический for со счётчиком и инкрементом ++
-    for (let i = 0; i < shipment.items.length; i++) {
-      const pkg = shipment.items[i];
-      if (pkg.weightKg <= 0 || pkg.volumeM3 < 0) {
-        continue;
-      }
-      shipmentWeight += pkg.weightKg;
-      validItemsCount++;
-    }
+    const base = tariff(shipment.zone, 450);
+    const fragile = (shipment.flags & FRAGILE) !== 0;
+    const hazardous = (shipment.flags & HAZARDOUS) !== 0;
+    const express = (shipment.flags & EXPRESS) !== 0;
 
-    const basePrice = calculateBaseTariff(shipment.zone, 450, 2500);
+    const extra = fragile ? 40 : 0;
+    const penalty = hazardous && !fragile ? 75 : 150;
+    const multiplier = express ? 1.5 : 1;
+    const cost = (base + extra + penalty) * multiplier;
+    const code = shipment.code ?? "NONE";
 
-    // Побитовые операции (&)
-    const isFragile = (shipment.flags & FLAG_FRAGILE) !== 0;
-    const isExpress = (shipment.flags & FLAG_EXPRESS) !== 0;
-
-    // Корректировка стоимости с тернарными операторами
-    const extraFee = isFragile ? 40 : 0;
-    const expressMultiplier = isExpress ? 1.5 : 1.0;
-
-    // Побитовое И (&), логическое НЕ (!) и тернарный оператор
-    const isHazardous = (shipment.flags & FLAG_HAZARDOUS) !== 0;
-    const hazardPenalty = isHazardous && !isFragile ? 75 : 150;
-
-    const calculatedCost = (basePrice + extraFee + hazardPenalty) * expressMultiplier;
-    const customsFee = shipment.zone === "international" ? calculatedCost * customsFeeRate : 0;
-    const finalShipmentCost = calculatedCost + customsFee;
-
-    // Оператор нулевого слияния ??
-    const code = shipment.customsCode ?? "DOMESTIC";
-    entries.push(`Cargo [${shipment.shipmentId}]: cost=${finalShipmentCost.toFixed(2)}, code="${code}"`);
-
-    totalCost += finalShipmentCost;
-    totalWeight += shipmentWeight;
-    shipmentsCount++;
+    result.push(`${shipment.id}: ${cost.toFixed(2)} ${code}`);
+    total += cost;
+    index++;
   }
 
-  // Цикл 3: while
-  let manifest = "";
-  let idx = 0;
-  while (idx < entries.length) {
-    manifest += `[ENTRY #${idx + 1}] ` + entries[idx] + "\n";
-    idx++;
+  while (index > 0) {
+    index--;
+    result[index] += " OK";
   }
 
-  // Арифметика и Math.round
-  const averageWeight = shipmentsCount > 0 ? Math.round((totalWeight / shipmentsCount) * 100) / 100 : 0;
-
-  return {
-    totalCost: Math.round(totalCost * 100) / 100,
-    shipmentsCount,
-    averageWeight,
-    manifest,
-  };
+  return result.join("\n") + `\nTotal: ${total.toFixed(2)}`;
 }
 
-// Тестовые данные (разнесены по переменным для чистого парсинга)
-const itemsShipment1: PackageItem[] = [
-  { weightKg: 12.5, volumeM3: 0.05 },
-  { weightKg: 30.0, volumeM3: 0.12 },
+const cargo: Shipment[] = [
+  { id: "A01", zone: "international", weight: 20, flags: FRAGILE | EXPRESS, code: "X1" },
+  { id: "B02", zone: "local", weight: 8, flags: HAZARDOUS, code: null },
+  { id: "C03", zone: "regional", weight: 15, flags: 0 }
 ];
-const itemsShipment2: PackageItem[] = [{ weightKg: 8.0, volumeM3: 0.02 }];
 
-const cargo1: CargoShipment = {
-  shipmentId: "CRG-501",
-  zone: "international",
-  items: itemsShipment1,
-  flags: FLAG_FRAGILE | FLAG_EXPRESS, // побитовое |
-  customsCode: "EXP-9920",
-};
+console.log(process(cargo));
+console.log(new Date().toISOString());
 
-const cargo2: CargoShipment = {
-  shipmentId: "CRG-502",
-  zone: "local",
-  items: itemsShipment2,
-  flags: FLAG_HAZARDOUS,
-  customsCode: null,
-};
+enum Priority {
+    Low = 1,
+    High = 2
+}
 
-const batch: CargoShipment[] = [cargo1, cargo2];
+class Box {
+    constructor(public value: number) {}
 
-// Вызовы функций, стандартных библиотек Date, JSON, console
-const report = processShipmentsBatch(batch, 0.1);
-console.log(`Dispatched at: ${new Date().toISOString()}`);
-console.log(`Summary: ${JSON.stringify({ count: report.shipmentsCount, total: report.totalCost })}`);
-console.log(report.manifest);
+    getValue(): number {
+        return this.value;
+    }
+}
+
+const check = (x: number): boolean => x >= 10;
+
+try {
+    if (check(20)) {
+        throw new Error("Test");
+    }
+} catch (error) {
+    console.log(error);
+}
